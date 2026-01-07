@@ -64,7 +64,7 @@ docker run -d \
   --network host \
   -v ~/stalkerhek/data:/data \
   -e STALKERHEK_PROFILES_FILE=/data/profiles.json \
-  kidpoleon/stalkerhek:latest
+  kidpoleon/stalkerhek:main
 ```
 
 ### 🐋 Docker Compose
@@ -73,7 +73,7 @@ docker run -d \
 version: '3.8'
 services:
   stalkerhek:
-    image: kidpoleon/stalkerhek:latest
+    image: kidpoleon/stalkerhek:main
     container_name: stalkerhek
     network_mode: host
     restart: unless-stopped
@@ -125,7 +125,7 @@ A: Yes! Each profile runs in parallel with its own ports.
 
 **Q: How do I update?**  
 ```bash
-docker pull kidpoleon/stalkerhek:latest
+docker pull kidpoleon/stalkerhek:main
 docker-compose down
 docker-compose up -d
 ```
