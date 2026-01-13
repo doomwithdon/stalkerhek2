@@ -2,6 +2,7 @@ package hls
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -137,6 +138,7 @@ func response(link string) (*http.Response, error) {
 	}
 
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("X-User-Agent", "Model: MAG200; Link: Ethernet")
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Cache-Control", "no-cache")
@@ -156,9 +158,8 @@ func response(link string) (*http.Response, error) {
 		return resp, nil
 	}
 
-	defer resp.Body.Close()
-
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		defer resp.Body.Close()
 		linkURL, err := url.Parse(link)
 		if err != nil {
 			return nil, errors.New("unknown error occurred")
@@ -171,6 +172,18 @@ func response(link string) (*http.Response, error) {
 		return response(newLink.String())
 	}
 
+	// Best-effort diagnostics: read a small prefix of the response body.
+	// This helps investigate provider blocks (e.g., HTTP 458) without dumping huge responses.
+	const maxDiag = 4096
+	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxDiag))
+	_ = resp.Body.Close()
+	msg := strings.TrimSpace(string(snippet))
+	if len(msg) > 300 {
+		msg = msg[:300]
+	}
+	if msg != "" {
+		return nil, errors.New(link + " returned HTTP code " + strconv.Itoa(resp.StatusCode) + ": " + msg)
+	}
 	return nil, errors.New(link + " returned HTTP code " + strconv.Itoa(resp.StatusCode))
 }
 

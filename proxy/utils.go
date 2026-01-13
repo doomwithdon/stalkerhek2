@@ -1,6 +1,9 @@
 package proxy
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -88,6 +91,9 @@ func getRequest(link string, originalRequest *http.Request, cfg *stalker.Config)
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", userAgent)
 	}
+	if req.Header.Get("X-User-Agent") == "" {
+		req.Header.Set("X-User-Agent", "Model: MAG200; Link: Ethernet")
+	}
 	if req.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "*/*")
 	}
@@ -101,7 +107,38 @@ func getRequest(link string, originalRequest *http.Request, cfg *stalker.Config)
 		req.Header.Set("Pragma", "no-cache")
 	}
 
-	return HTTPClient.Do(req)
+	resp, err := HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return resp, nil
+	}
+
+	// Best-effort diagnostics: read a small prefix of the response body and then restore it.
+	// This helps investigate provider blocks (e.g., HTTP 458) without breaking streaming.
+	const maxDiag = 4096
+	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxDiag))
+	resp.Body = io.NopCloser(io.MultiReader(bytes.NewReader(snippet), resp.Body))
+	if len(snippet) > 0 {
+		msg := strings.TrimSpace(string(snippet))
+		if len(msg) > 300 {
+			msg = msg[:300]
+		}
+		safeLink := link
+		if u, err := url.Parse(link); err == nil {
+			safeLink = u.Scheme + "://" + u.Host + u.Path
+		}
+		log.Printf("Upstream non-2xx: %d for %s (body: %q)", resp.StatusCode, safeLink, msg)
+	} else {
+		safeLink := link
+		if u, err := url.Parse(link); err == nil {
+			safeLink = u.Scheme + "://" + u.Host + u.Path
+		}
+		log.Printf("Upstream non-2xx: %d for %s", resp.StatusCode, safeLink)
+	}
+
+	return resp, nil
 }
 
 func addHeaders(from, to http.Header) {

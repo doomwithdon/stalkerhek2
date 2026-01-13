@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -26,6 +27,14 @@ func (p *Portal) handshake() error {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 2116 Mobile Safari/533.3")
 	req.Header.Set("X-User-Agent", "Model: "+p.Model+"; Link: Ethernet")
 	req.Header.Set("Cookie", "sn="+p.SerialNumber+"; mac="+p.MAC+"; stb_lang=en; timezone="+p.TimeZone)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Pragma", "no-cache")
+	if u, err := url.Parse(p.Location); err == nil {
+		req.Header.Set("Referer", u.Scheme+"://"+u.Host+"/")
+		req.Header.Set("Origin", u.Scheme+"://"+u.Host)
+	}
 
 	resp, err := HTTPClient.Do(req)
 	if err != nil {

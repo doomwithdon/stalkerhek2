@@ -18,17 +18,44 @@ func InitProfilesFileFromEnv() {
 
 // SaveProfiles writes current profiles to disk
 func SaveProfiles() error {
-    profMu.RLock()
-    defer profMu.RUnlock()
+	profMu.RLock()
+	snap := make([]Profile, len(profiles))
+	copy(snap, profiles)
+	profMu.RUnlock()
+
 	if dir := filepath.Dir(profilesFile); dir != "." {
 		_ = os.MkdirAll(dir, 0o755)
 	}
-    f, err := os.Create(profilesFile)
-    if err != nil { return err }
-    defer f.Close()
-    enc := json.NewEncoder(f)
-    enc.SetIndent("", "  ")
-    return enc.Encode(profiles)
+
+	tmpDir := filepath.Dir(profilesFile)
+	if tmpDir == "" || tmpDir == "." {
+		tmpDir = "."
+	}
+	f, err := os.CreateTemp(tmpDir, ".profiles.json.*")
+	if err != nil {
+		return err
+	}
+	tmpName := f.Name()
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(tmpName)
+	}()
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(snap); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, profilesFile); err != nil {
+		return err
+	}
+	return nil
 }
 
 // LoadProfiles loads profiles from disk (if exists)

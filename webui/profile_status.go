@@ -100,6 +100,14 @@ func SetProfileStopped(id int) {
 	psMu.Unlock()
 }
 
+func SetProfileStopping(id int) {
+	psMu.Lock()
+	s := pstate[id]
+	s.Phase, s.Message, s.Running = "idle", "Stopping...", false
+	pstate[id] = s
+	psMu.Unlock()
+}
+
 // RegisterProfileStatusHandlers mounts /api/profile_status for polling
 func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/profile_status", func(w http.ResponseWriter, r *http.Request) {
@@ -110,11 +118,14 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 			arr = append(arr, v)
 		}
 		psMu.RUnlock()
-		// annotate with in-flight start state (read startBusy under startMu)
+		startMu.Lock()
+		busySnap := make(map[int]bool, len(startBusy))
+		for k, v := range startBusy {
+			busySnap[k] = v
+		}
+		startMu.Unlock()
 		for i := range arr {
-			startMu.Lock()
-			arr[i].Busy = startBusy[arr[i].ID]
-			startMu.Unlock()
+			arr[i].Busy = busySnap[arr[i].ID]
 		}
 		sort.Slice(arr, func(i, j int) bool { return arr[i].ID < arr[j].ID })
 		_ = json.NewEncoder(w).Encode(arr)
@@ -133,11 +144,25 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 		}
 		id := atoiSafe(idStr)
 		startMu.Lock()
-		stopRequested[id] = true
+		if startBusy[id] {
+			stopRequested[id] = true
+		} else {
+			delete(stopRequested, id)
+		}
 		startMu.Unlock()
 		AppendProfileLog(id, "Stop requested (user)")
-		_ = StopRunner(id)
-		SetProfileStopped(id)
+		ClearProfileChannels(id)
+		done, ok := StopRunnerWithDone(id)
+		if ok && done != nil {
+			SetProfileStopping(id)
+			go func() {
+				<-done
+				ClearProfileChannels(id)
+				SetProfileStopped(id)
+			}()
+		} else {
+			SetProfileStopped(id)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	})
@@ -155,11 +180,25 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 		}
 		id := atoiSafe(idStr)
 		startMu.Lock()
-		stopRequested[id] = true
+		if startBusy[id] {
+			stopRequested[id] = true
+		} else {
+			delete(stopRequested, id)
+		}
 		startMu.Unlock()
 		AppendProfileLog(id, "Stop requested (user)")
-		_ = StopRunner(id)
-		SetProfileStopped(id)
+		ClearProfileChannels(id)
+		done, ok := StopRunnerWithDone(id)
+		if ok && done != nil {
+			SetProfileStopping(id)
+			go func() {
+				<-done
+				ClearProfileChannels(id)
+				SetProfileStopped(id)
+			}()
+		} else {
+			SetProfileStopped(id)
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	})
 
@@ -171,10 +210,15 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 		}
 		id := atoiSafe(r.FormValue("id"))
 		startMu.Lock()
-		stopRequested[id] = true
+		if startBusy[id] {
+			stopRequested[id] = true
+		} else {
+			delete(stopRequested, id)
+		}
 		startMu.Unlock()
 		AppendProfileLog(id, "Profile deleted")
 		ClearProfileChannels(id)
+		_, _ = StopRunnerWithDone(id)
 		filterstore.DeleteProfile(id)
 		_ = SaveFilters()
 		DeleteProfile(id)

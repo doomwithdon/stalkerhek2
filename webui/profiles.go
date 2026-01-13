@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/url"
 	"net/http"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kidpoleon/stalkerhek/hls"
@@ -57,14 +60,31 @@ func normalizePortalURL(raw string) string {
 		u.Path = strings.TrimSuffix(u.Path, "/load.php") + "/portal.php"
 	}
 	if !strings.HasSuffix(strings.ToLower(u.Path), "/portal.php") {
-		// If a random .php is given, portal.php is usually required.
+		// If a random .php is given, portal.php is usually required in the same directory.
 		if strings.HasSuffix(strings.ToLower(u.Path), ".php") {
-			u.Path = "/portal.php"
+			u.Path = path.Join(path.Dir(u.Path), "portal.php")
 		} else {
 			u.Path = strings.TrimSuffix(u.Path, "/") + "/portal.php"
 		}
 	}
 	return u.String()
+}
+
+func normalizePortalURLWithNotice(raw string) (string, bool) {
+	n := normalizePortalURL(raw)
+	return n, strings.TrimSpace(raw) != "" && strings.TrimSpace(raw) != n
+}
+
+func checkPortAvailable(port int) error {
+	if port <= 0 || port > 65535 {
+		return fmt.Errorf("invalid port: %d", port)
+	}
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return err
+	}
+	_ = ln.Close()
+	return nil
 }
 
 func isLikelyValidPortalURL(s string) bool {
@@ -161,6 +181,7 @@ func StartProfileServices(p Profile) {
 	defer func() {
 		startMu.Lock()
 		delete(startBusy, p.ID)
+		delete(stopRequested, p.ID)
 		startMu.Unlock()
 	}()
 	shouldStop := func(stage string) bool {
@@ -179,7 +200,12 @@ func StartProfileServices(p Profile) {
 	}
 
 	// Preflight validation (server-side) so UI is idiot-proof even if the client JS is bypassed.
-	p.PortalURL = normalizePortalURL(p.PortalURL)
+	if norm, changed := normalizePortalURLWithNotice(p.PortalURL); changed {
+		AppendProfileLog(p.ID, "Portal URL normalized")
+		p.PortalURL = norm
+	} else {
+		p.PortalURL = normalizePortalURL(p.PortalURL)
+	}
 	p.MAC = strings.ToUpper(strings.TrimSpace(p.MAC))
 	if !isLikelyValidPortalURL(p.PortalURL) {
 		AppendProfileLog(p.ID, "Invalid portal URL: "+p.PortalURL)
@@ -187,8 +213,18 @@ func StartProfileServices(p Profile) {
 		return
 	}
 	if !isValidMAC(p.MAC) {
-		AppendProfileLog(p.ID, "Invalid MAC format: "+p.MAC)
+		AppendProfileLog(p.ID, "Invalid MAC format")
 		SetProfileError(p.ID, p.Name, "Invalid MAC format. Tip: it must be 6 hex pairs like 00:1A:79:AA:BB:CC.")
+		return
+	}
+	if err := checkPortAvailable(p.HlsPort); err != nil {
+		AppendProfileLog(p.ID, "HLS port unavailable")
+		SetProfileError(p.ID, p.Name, "HLS port is unavailable. Choose a different HLS port.")
+		return
+	}
+	if err := checkPortAvailable(p.ProxyPort); err != nil {
+		AppendProfileLog(p.ID, "Proxy port unavailable")
+		SetProfileError(p.ID, p.Name, "Proxy port is unavailable. Choose a different Proxy port.")
 		return
 	}
 
@@ -376,6 +412,16 @@ func StartProfileServices(p Profile) {
 	// Create per-profile context
 	pCtx, pCancel := context.WithCancel(context.Background())
 	RegisterRunner(p.ID, pCancel)
+	done := make(chan struct{})
+	RegisterRunnerDone(p.ID, done)
+	var live atomic.Int32
+	live.Store(2)
+	markDone := func() {
+		if live.Add(-1) == 0 {
+			close(done)
+			ClearProfileChannels(p.ID)
+		}
+	}
 
 	// Start HLS
 	go func(channels map[string]*stalker.Channel) {
@@ -385,6 +431,7 @@ func StartProfileServices(p Profile) {
 		hls.StartWithContext(pCtx, p.ID, channels, cfg.HLS.Bind)
 		log.Printf("[PROFILE %s] HLS service stopped on %s", p.Name, cfg.HLS.Bind)
 		AppendProfileLog(p.ID, "HLS stopped")
+		markDone()
 	}(chs)
 
 	// Start Proxy
@@ -394,6 +441,7 @@ func StartProfileServices(p Profile) {
 		proxy.StartWithContext(pCtx, p.ID, cfg, channels)
 		log.Printf("[PROFILE %s] Proxy service stopped on %s", p.Name, cfg.Proxy.Bind)
 		AppendProfileLog(p.ID, "Proxy stopped")
+		markDone()
 	}(chs)
 
 }
@@ -436,6 +484,9 @@ func RegisterProfileHandlers(mux *http.ServeMux, onStart func()) {
 		editIDStr := strings.TrimSpace(r.FormValue("edit_id"))
 		name := strings.TrimSpace(r.FormValue("name"))
 		portal := normalizePortalURL(r.FormValue("portal"))
+		if norm, changed := normalizePortalURLWithNotice(r.FormValue("portal")); changed {
+			portal = norm
+		}
 		if portal == "" {
 			portal = defaultPortalURL
 		}

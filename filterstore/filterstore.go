@@ -2,6 +2,7 @@ package filterstore
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"os"
 	"strings"
 	"sync"
@@ -238,5 +239,32 @@ func SaveToFile(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, b, 0o644)
+
+	tmpDir := filepath.Dir(path)
+	if tmpDir == "" || tmpDir == "." {
+		tmpDir = "."
+	}
+	f, err := os.CreateTemp(tmpDir, ".filters.json.*")
+	if err != nil {
+		return err
+	}
+	tmpName := f.Name()
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(tmpName)
+	}()
+
+	if _, err := f.Write(b); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	return nil
 }

@@ -1,12 +1,14 @@
 package webui
 
 import (
-    "context"
-    "html/template"
-    "log"
-    "net/http"
-    "strings"
-    "time"
+	"context"
+	"compress/gzip"
+	"html/template"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
     "github.com/kidpoleon/stalkerhek/stalker"
 )
@@ -14,6 +16,59 @@ import (
 type uiState struct {
     PortalURL string
     MAC       string
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	zw          *gzip.Writer
+	compressed  bool
+	wroteHeader bool
+}
+
+func (g *gzipResponseWriter) WriteHeader(statusCode int) {
+	if g.wroteHeader {
+		return
+	}
+	g.wroteHeader = true
+	ct := g.Header().Get("Content-Type")
+	if strings.Contains(ct, "text/event-stream") {
+		g.ResponseWriter.WriteHeader(statusCode)
+		return
+	}
+	if strings.HasPrefix(ct, "text/") || strings.HasPrefix(ct, "application/json") {
+		g.Header().Set("Content-Encoding", "gzip")
+		g.Header().Del("Content-Length")
+		g.compressed = true
+	}
+	g.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (g *gzipResponseWriter) Write(p []byte) (int, error) {
+	if !g.wroteHeader {
+		g.WriteHeader(http.StatusOK)
+	}
+	if g.compressed {
+		return g.zw.Write(p)
+	}
+	return g.ResponseWriter.Write(p)
+}
+
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/logs") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		zw := gzip.NewWriter(w)
+		defer zw.Close()
+		gw := &gzipResponseWriter{ResponseWriter: w, zw: zw}
+		w.Header().Add("Vary", "Accept-Encoding")
+		next.ServeHTTP(gw, r)
+	})
 }
 
 func StartWithContext(ctx context.Context, cfg *stalker.Config, ready chan struct{}) {
@@ -57,6 +112,9 @@ func StartWithContext(ctx context.Context, cfg *stalker.Config, ready chan struc
         IncrementRequests()
         mux.ServeHTTP(w, r)
     })
+    if os.Getenv("STALKERHEK_WEBUI_GZIP") == "1" {
+        handler = gzipMiddleware(handler)
+    }
 
     // mount profile endpoints, signal readiness when /start is called
     RegisterProfileHandlers(mux, func() {

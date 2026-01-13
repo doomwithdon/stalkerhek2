@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -61,6 +63,14 @@ func (p *Portal) httpRequest(link string) ([]byte, error) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 2116 Mobile Safari/533.3")
 	req.Header.Set("X-User-Agent", "Model: "+p.Model+"; Link: Ethernet")
 	req.Header.Set("Authorization", "Bearer "+p.Token)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Pragma", "no-cache")
+	if u, err := url.Parse(link); err == nil {
+		req.Header.Set("Referer", u.Scheme+"://"+u.Host+"/")
+		req.Header.Set("Origin", u.Scheme+"://"+u.Host)
+	}
 
 	cookieText := "PHPSESSID=null; sn=" + url.QueryEscape(p.SerialNumber) + "; mac=" + url.QueryEscape(p.MAC) + "; stb_lang=en; timezone=" + url.QueryEscape(p.TimeZone) + ";"
 
@@ -73,7 +83,20 @@ func (p *Portal) httpRequest(link string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, errors.New("Site '" + link + "' returned " + resp.Status)
+		safeLink := link
+		if u, err := url.Parse(link); err == nil {
+			safeLink = u.Scheme + "://" + u.Host + u.Path
+		}
+		const maxDiag = 4096
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxDiag))
+		msg := strings.TrimSpace(string(snippet))
+		if len(msg) > 300 {
+			msg = msg[:300]
+		}
+		if msg != "" {
+			return nil, errors.New("Site '" + safeLink + "' returned " + resp.Status + ": " + msg)
+		}
+		return nil, errors.New("Site '" + safeLink + "' returned " + resp.Status)
 	}
 
 	contents, err := ioutil.ReadAll(resp.Body)
