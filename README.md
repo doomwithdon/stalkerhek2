@@ -8,31 +8,26 @@
 
 ## Tutorial Video
 
-[![Stalkerhek Tutorial](https://i.ibb.co/b53gtx6G/STALKERHEK-BANNER-3840x2160.png)](https://www.youtube.com/watch?v=7AvkvlGfv64)
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=7AvkvlGfv64">
+    <img src="https://i.ibb.co/b53gtx6G/STALKERHEK-BANNER-3840x2160.png" alt="Stalkerhek Tutorial" style="max-width: 100%; height: auto;">
+  </a>
+  <br>
+  <em>Click the image above to watch the tutorial video and get started with stalkerhek</em>
+</p>
 
-*Click the image above to watch the tutorial video and get started with stalkerhek*
+---
 
 ## Screenshots
 
 <div align="center">
-<table>
-<tr>
-<td align="center"><strong>Create Profile</strong></td>
-<td align="center"><strong>Filter Management</strong></td>
-</tr>
-<tr>
-<td><img src="https://i.ibb.co/67YdPgTz/create-page.png" alt="create page" width="100%"></td>
-<td><img src="https://i.ibb.co/zTcQLk91/filter-page.png" alt="filter page" width="100%"></td>
-</tr>
-<tr>
-<td align="center"><strong>Profile Management</strong></td>
-<td align="center"><strong>Tuning Settings</strong></td>
-</tr>
-<tr>
-<td><img src="https://i.ibb.co/zVNTtg2W/manage-page.png" alt="manage page" width="100%"></td>
-<td><img src="https://i.ibb.co/8DVWCFJg/tuning-page.png" alt="tuning page" width="100%"></td>
-</tr>
-</table>
+
+| **Create Profile** | **Filter Management** |
+| :---: | :---: |
+| <img src="https://i.ibb.co/67YdPgTz/create-page.png" width="400"> | <img src="https://i.ibb.co/zTcQLk91/filter-page.png" width="400"> |
+| **Profile Management** | **Tuning Settings** |
+| <img src="https://i.ibb.co/zVNTtg2W/manage-page.png" width="400"> | <img src="https://i.ibb.co/8DVWCFJg/tuning-page.png" width="400"> |
+
 </div>
 
 ---
