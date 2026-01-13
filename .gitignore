@@ -1,30 +1,75 @@
-# Go build outputs
+########################
+# Go / build artifacts #
+########################
+# Compiled binaries and build output directories.
 /bin/
+/dist/
+/build/
+
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Go test
+################
+# Go test / QA #
+################
 *.test
 *.out
+coverage.out
+coverage.*
 
-# Go workspace
+################
+# Go workspace #
+################
 /go.work
 /go.work.sum
 
-# IDE/editor
+############################
+# Runtime state / user data #
+############################
+# These files contain portal URLs, MACs, tokens, and per-profile configuration.
+# They MUST NOT be committed.
+profiles.json
+filters.json
+
+# Common persistent data volume directories.
+data/
+/data/
+
+# Ad-hoc logs and crash outputs.
+*.log
+logs/
+/logs/
+
+# Optional local config (if you create one).
+stalkerhek.yml
+stalkerhek.yaml
+
+########################
+# Secrets / env files   #
+########################
+# If you add environment-based configuration locally.
+.env
+.env.*
+*.env
+
+########################
+# Editor / OS artifacts #
+########################
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
+*.bak
+*.orig
 .DS_Store
+Thumbs.db
 
-# Local runtime / user data (may contain private portal credentials)
-profiles.json
-data/
-
-# Optional local config (if you create one)
-stalkerhek.yml
+########################
+# Misc tooling caches   #
+########################
+.cache/
+.tmp/

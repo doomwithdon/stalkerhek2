@@ -1,13 +1,52 @@
-# Git
+##############################
+# Reduce Docker build context #
+##############################
+# Docker sends the build context (everything not ignored) to the daemon.
+# Keeping this file tight:
+# - speeds up builds
+# - improves caching
+# - avoids leaking local state into images
+
+############
+# VCS / CI #
+############
 .git
+.github
 
-# Local/secret-ish runtime state
+############################
+# Runtime state / user data #
+############################
+# Never bake local credentials / profile state into images.
 profiles.json
+filters.json
 data/
-stalkerhek.yml
 
-# Go build artifacts
+# Optional local config (if you create one).
+stalkerhek.yml
+stalkerhek.yaml
+
+########################
+# Secrets / env files   #
+########################
+.env
+.env.*
+*.env
+
+#####################
+# Logs / temp files  #
+#####################
+*.log
+logs/
+.cache/
+.tmp/
+
+#######################
+# Go build/test output #
+#######################
 bin/
+dist/
+build/
+
 *.exe
 *.exe~
 *.dll
@@ -16,7 +55,10 @@ bin/
 *.test
 *.out
 
-# Editor
+########################
+# Editor / OS artifacts #
+########################
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
