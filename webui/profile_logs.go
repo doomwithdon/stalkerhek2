@@ -143,7 +143,7 @@ func RenderProfileLogsPage(id int, name string) string {
   <style>
     :root{--bg:#0a0f0a;--panel:#0d1410;--border:#1f2e23;--text:#e0e6e0;--muted:#9aaa9a;--brand:#2d7a4e;--brand-hover:#3a8f5e}
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:linear-gradient(180deg, #0d1410 0%, #0a0f0a 100%);color:var(--text);min-height:100vh}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:linear-gradient(180deg, #0d1410 0%%, #0a0f0a 100%%);color:var(--text);min-height:100vh}
     a{color:var(--brand);text-decoration:none} a:hover{color:var(--brand-hover);text-decoration:underline}
     .wrap{max-width:1100px;margin:0 auto;padding:18px 12px 40px}
     h1{margin:0 0 6px 0;font-size:20px}

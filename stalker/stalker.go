@@ -1,6 +1,7 @@
 package stalker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -86,13 +87,8 @@ func (p *Portal) httpRequest(link string) ([]byte, error) {
 // WatchdogUpdate performs watchdog update request.
 func (p *Portal) watchdogUpdate() error {
 	type wdStruct struct {
-		Js struct {
-			Data struct {
-				Msgs                   int `json:"msgs"`
-				Additional_services_on int `json:"additional_services_on"`
-			} `json:"data"`
-		} `json:"js"`
-		Text string `json:"text"`
+		Js   json.RawMessage `json:"js"`
+		Text string          `json:"text"`
 	}
 	var wd wdStruct
 	content, err := p.httpRequest(p.Location + "?action=get_events&event_active_id=0&init=0&type=watchdog&cur_play_type=1&JsHttpRequest=1-xml")
@@ -102,6 +98,23 @@ func (p *Portal) watchdogUpdate() error {
 
 	if err := json.Unmarshal(content, &wd); err != nil {
 		return fmt.Errorf("watchdog update: invalid response: %w", err)
+	}
+
+	js := bytes.TrimSpace(wd.Js)
+	if len(js) == 0 || js[0] == '[' {
+		return nil
+	}
+	if js[0] == '{' {
+		var payload struct {
+			Data struct {
+				Msgs                   int `json:"msgs"`
+				Additional_services_on int `json:"additional_services_on"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(js, &payload); err != nil {
+			return nil
+		}
+		return nil
 	}
 
 	return nil

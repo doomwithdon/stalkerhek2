@@ -5,7 +5,11 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/kidpoleon/stalkerhek/filterstore"
 )
+
+var errForbidden = errors.New("forbidden")
 
 // ContentRequest represents HTTP request that is received from the user
 type ContentRequest struct {
@@ -38,6 +42,12 @@ func (s *serverState) getContentRequest(w http.ResponseWriter, r *http.Request, 
 	channelRef, ok := s.playlist[reqPathParts[0]]
 	if !ok {
 		return nil, errors.New("bad request")
+	}
+	if channelRef == nil || channelRef.StalkerChannel == nil {
+		return nil, errors.New("bad request")
+	}
+	if !filterstore.IsAllowed(s.profileID, channelRef.StalkerChannel) {
+		return nil, errForbidden
 	}
 
 	// /iptv/<channel>

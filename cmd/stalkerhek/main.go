@@ -30,6 +30,9 @@ func main() {
 	flag.Parse()
 
 	webui.InitProfilesFileFromEnv()
+	if err := webui.LoadFilters(); err != nil {
+		log.Printf("failed to load filters: %v", err)
+	}
 
 	// Initialize in-memory configuration; WebUI will collect portal URL and MAC.
 	c := &stalker.Config{

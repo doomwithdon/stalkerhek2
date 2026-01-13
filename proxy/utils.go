@@ -10,6 +10,8 @@ import (
 	"github.com/kidpoleon/stalkerhek/stalker"
 )
 
+const userAgent = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 2116 Mobile Safari/533.3"
+
 // HTTPClient with connection pooling for proxy package
 var HTTPClient = &http.Client{
 	// NOTE: Do NOT set http.Client.Timeout for proxy streaming.
@@ -21,7 +23,7 @@ var HTTPClient = &http.Client{
 			Timeout:   10 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          256,
 		MaxIdleConnsPerHost:   64,
 		IdleConnTimeout:       90 * time.Second,
@@ -56,6 +58,11 @@ func getRequest(link string, originalRequest *http.Request, cfg *stalker.Config)
 		return nil, err
 	}
 
+	if u, err := url.Parse(link); err == nil {
+		req.Header.Set("Referer", u.Scheme+"://"+u.Host+"/")
+		req.Header.Set("Origin", u.Scheme+"://"+u.Host)
+	}
+
 	for k, v := range originalRequest.Header {
 		switch k {
 		case "Authorization":
@@ -68,6 +75,30 @@ func getRequest(link string, originalRequest *http.Request, cfg *stalker.Config)
 		default:
 			req.Header.Set(k, v[0])
 		}
+	}
+
+	// Ensure required headers are present even if the downstream client did not send them.
+	if req.Header.Get("Authorization") == "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.Portal.Token)
+	}
+	if req.Header.Get("Cookie") == "" {
+		cookieText := "PHPSESSID=null; sn=" + url.QueryEscape(cfg.Portal.SerialNumber) + "; mac=" + url.QueryEscape(cfg.Portal.MAC) + "; stb_lang=en; timezone=" + url.QueryEscape(cfg.Portal.TimeZone) + ";"
+		req.Header.Set("Cookie", cookieText)
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", userAgent)
+	}
+	if req.Header.Get("Accept") == "" {
+		req.Header.Set("Accept", "*/*")
+	}
+	if req.Header.Get("Accept-Language") == "" {
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	}
+	if req.Header.Get("Cache-Control") == "" {
+		req.Header.Set("Cache-Control", "no-cache")
+	}
+	if req.Header.Get("Pragma") == "" {
+		req.Header.Set("Pragma", "no-cache")
 	}
 
 	return HTTPClient.Do(req)

@@ -39,7 +39,7 @@ var httpClient = &http.Client{
 			Timeout:   10 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     false,
 		MaxIdleConns:          256,
 		MaxIdleConnsPerHost:   64,
 		IdleConnTimeout:       90 * time.Second,
@@ -137,6 +137,15 @@ func response(link string) (*http.Response, error) {
 	}
 
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Connection", "keep-alive")
+	if u, err := url.Parse(link); err == nil {
+		req.Header.Set("Referer", u.Scheme+"://"+u.Host+"/")
+		req.Header.Set("Origin", u.Scheme+"://"+u.Host)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

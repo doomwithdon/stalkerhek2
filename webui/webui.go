@@ -45,6 +45,9 @@ func StartWithContext(ctx context.Context, cfg *stalker.Config, ready chan struc
     // mount runtime tuning settings endpoints (/api/settings)
     RegisterSettingsHandlers(mux)
 
+    // mount per-profile channel/genre filter endpoints
+    RegisterFilterHandlers(mux)
+
     // mount health/metrics/info endpoints
     RegisterHealthHandlers(mux)
 

@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/kidpoleon/stalkerhek/filterstore"
 	"github.com/kidpoleon/stalkerhek/stalker"
 )
 
@@ -171,6 +174,9 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 		stopRequested[id] = true
 		startMu.Unlock()
 		AppendProfileLog(id, "Profile deleted")
+		ClearProfileChannels(id)
+		filterstore.DeleteProfile(id)
+		_ = SaveFilters()
 		DeleteProfile(id)
 		_ = SaveProfiles()
 		SetProfileStopped(id)
@@ -226,7 +232,7 @@ func RegisterProfileStatusHandlers(mux *http.ServeMux) {
 // helper: safe atoi
 func atoiSafe(s string) int { n := 0; for _, c := range s { if c < '0' || c > '9' { break }; n = n*10 + int(c-'0') }; return n }
 
-func itoa(n int) string { if n == 0 { return "0" }; s := ""; for n > 0 { s = string('0'+(n%10)) + s; n/=10 }; return s }
+func itoa(n int) string { return strconv.Itoa(n) }
 
 // linkForHost composes an http://host:port/ link given a raw host header
 func linkForHost(raw string, port int) string {

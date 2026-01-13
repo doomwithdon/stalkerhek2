@@ -11,10 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kidpoleon/stalkerhek/filterstore"
 	"github.com/kidpoleon/stalkerhek/stalker"
 )
 
 type serverState struct {
+	profileID  int
 	portalBase string
 	cfg        *stalker.Config
 	channels   map[string]*stalker.Channel
@@ -64,12 +66,12 @@ func externalBase(r *http.Request) (scheme string, host string) {
 }
 
 // Start starts main routine.
-func Start(c *stalker.Config, chs map[string]*stalker.Channel) {
-	StartWithContext(context.Background(), c, chs)
+func Start(profileID int, c *stalker.Config, chs map[string]*stalker.Channel) {
+	StartWithContext(context.Background(), profileID, c, chs)
 }
 
 // StartWithContext starts main routine with graceful shutdown support.
-func StartWithContext(ctx context.Context, c *stalker.Config, chs map[string]*stalker.Channel) {
+func StartWithContext(ctx context.Context, profileID int, c *stalker.Config, chs map[string]*stalker.Channel) {
 	// Channels will be matched by CMD field, not by title
 	newChannels := make(map[string]*stalker.Channel)
 	for _, v := range chs {
@@ -85,7 +87,7 @@ func StartWithContext(ctx context.Context, c *stalker.Config, chs map[string]*st
 	}
 	portalBase := link.Scheme + "://" + link.Host
 
-	s := &serverState{portalBase: portalBase, cfg: c, channels: newChannels}
+	s := &serverState{profileID: profileID, portalBase: portalBase, cfg: c, channels: newChannels}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.requestHandler)
@@ -188,6 +190,11 @@ func (s *serverState) requestHandler(w http.ResponseWriter, r *http.Request) {
 		if !found {
 			log.Println("STB requested 'create_link', but gave invalid CMD:", tagCMD)
 			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if !filterstore.IsAllowed(s.profileID, channel) {
+			log.Println("STB requested blocked channel CMD:", tagCMD)
+			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 

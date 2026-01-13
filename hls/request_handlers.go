@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/kidpoleon/stalkerhek/filterstore"
 )
 
 // Handles '/iptv' requests
@@ -15,10 +18,18 @@ func (s *serverState) playlistHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "#EXTM3U")
 	for _, title := range s.sortedChannels {
+		ch := s.playlist[title]
+		if ch == nil || ch.StalkerChannel == nil {
+			continue
+		}
+		if !filterstore.IsAllowed(s.profileID, ch.StalkerChannel) {
+			continue
+		}
 		link := scheme + "://" + host + "/iptv/" + url.PathEscape(title)
 		logo := "/logo/" + url.PathEscape(title)
-
-		fmt.Fprintf(w, "#EXTINF:-1 tvg-logo=\"%s\" group-title=\"%s\", %s\n%s\n", logo, s.playlist[title].Genre, title, link)
+		tvgID := strings.ReplaceAll(ch.StalkerChannel.CMD, "\"", "")
+		tvgName := strings.ReplaceAll(title, "\"", "")
+		fmt.Fprintf(w, "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\", %s\n%s\n", tvgID, tvgName, logo, ch.Genre, title, link)
 	}
 }
 
@@ -26,6 +37,10 @@ func (s *serverState) playlistHandler(w http.ResponseWriter, r *http.Request) {
 func (s *serverState) channelHandler(w http.ResponseWriter, r *http.Request) {
 	cr, err := s.getContentRequest(w, r, "/iptv/")
 	if err != nil {
+		if err == errForbidden {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -49,6 +64,10 @@ func (s *serverState) channelHandler(w http.ResponseWriter, r *http.Request) {
 func (s *serverState) logoHandler(w http.ResponseWriter, r *http.Request) {
 	cr, err := s.getContentRequest(w, r, "/logo/")
 	if err != nil {
+		if err == errForbidden {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -89,9 +108,18 @@ func (s *serverState) rootHandler(w http.ResponseWriter, r *http.Request) {
 
         fmt.Fprintln(w, "#EXTM3U")
 		for _, title := range s.sortedChannels {
+			ch := s.playlist[title]
+			if ch == nil || ch.StalkerChannel == nil {
+				continue
+			}
+			if !filterstore.IsAllowed(s.profileID, ch.StalkerChannel) {
+				continue
+			}
 			link := scheme + "://" + host + "/" + url.PathEscape(title)
             logo := "/logo/" + url.PathEscape(title)
-			fmt.Fprintf(w, "#EXTINF:-1 tvg-logo=\"%s\" group-title=\"%s\", %s\n%s\n", logo, s.playlist[title].Genre, title, link)
+			tvgID := strings.ReplaceAll(ch.StalkerChannel.CMD, "\"", "")
+			tvgName := strings.ReplaceAll(title, "\"", "")
+			fmt.Fprintf(w, "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\", %s\n%s\n", tvgID, tvgName, logo, ch.Genre, title, link)
         }
         return
     }
@@ -99,6 +127,10 @@ func (s *serverState) rootHandler(w http.ResponseWriter, r *http.Request) {
     // Treat anything else at root as a channel request
     cr, err := s.getContentRequest(w, r, "/")
     if err != nil {
+        if err == errForbidden {
+            http.Error(w, "forbidden", http.StatusForbidden)
+            return
+        }
         http.Error(w, "invalid request", http.StatusBadRequest)
         return
     }

@@ -1,10 +1,12 @@
 package stalker
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 )
@@ -90,7 +92,19 @@ func (c *Channel) Logo() string {
 	if c.LogoLink == "" {
 		return ""
 	}
-	return c.Portal.Location + "misc/logos/320/" + c.LogoLink // hardcoded path - fixme?
+	base, err := url.Parse(c.Portal.Location)
+	if err != nil {
+		return c.Portal.Location + "misc/logos/320/" + c.LogoLink // hardcoded path - fixme?
+	}
+	// If Location points to portal.php, derive the directory containing it.
+	base.Path = path.Dir(base.Path)
+	if base.Path == "." {
+		base.Path = "/"
+	}
+	base.RawQuery = ""
+	base.Fragment = ""
+	base.Path = path.Join(base.Path, "misc", "logos", "320", c.LogoLink)
+	return base.String()
 }
 
 // Genre returns a genre title
@@ -108,18 +122,7 @@ func (c *Channel) Genre() string {
 // RetrieveChannels retrieves all TV channels from stalker portal.
 func (p *Portal) RetrieveChannels() (map[string]*Channel, error) {
 	type tmpStruct struct {
-		Js struct {
-			Data []struct {
-				Name    string `json:"name"`        // Title of channel
-				Cmd     string `json:"cmd"`         // Some sort of URL used to request channel real URL
-				Logo    string `json:"logo"`        // Link to logo
-				GenreID string `json:"tv_genre_id"` // Genre ID
-				CMDs    []struct {
-					ID    string `json:"id"`    // Used for Proxy service to generate fake response to new URL request
-					CH_ID string `json:"ch_id"` // Used for Proxy service to generate fake response to new URL request
-				} `json:"cmds"`
-			} `json:"data"`
-		} `json:"js"`
+		Js json.RawMessage `json:"js"`
 	}
 	var tmp tmpStruct
 
@@ -131,8 +134,33 @@ func (p *Portal) RetrieveChannels() (map[string]*Channel, error) {
 	// Dump json output to file
 	//ioutil.WriteFile("/tmp/dumpedchannels.json", content, 0644)
 
-	if err := json.Unmarshal(content, &tmp); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(content))
+	dec.UseNumber()
+	if err := dec.Decode(&tmp); err != nil {
 		return nil, fmt.Errorf("get_all_channels: invalid response: %w", err)
+	}
+	js := bytes.TrimSpace(tmp.Js)
+	if len(js) == 0 || js[0] == '[' {
+		return nil, fmt.Errorf("get_all_channels: portal returned no channel data (check MAC address and portal URL)")
+	}
+	type jsPayload struct {
+		Data []struct {
+			Name    string `json:"name"`
+			Cmd     string `json:"cmd"`
+			Logo    string `json:"logo"`
+			GenreID string `json:"tv_genre_id"`
+			CMDs    []struct {
+				ID    string `json:"id"`
+				CH_ID string `json:"ch_id"`
+			} `json:"cmds"`
+		} `json:"data"`
+	}
+	var payload jsPayload
+	if err := json.Unmarshal(js, &payload); err != nil {
+		return nil, fmt.Errorf("get_all_channels: invalid js payload (check MAC address and portal URL)")
+	}
+	if len(payload.Data) == 0 {
+		return nil, fmt.Errorf("get_all_channels: no channels returned (check MAC address and portal URL)")
 	}
 
 	genres, err := p.getGenres()
@@ -141,8 +169,8 @@ func (p *Portal) RetrieveChannels() (map[string]*Channel, error) {
 	}
 
 	// Build channels list and return
-	channels := make(map[string]*Channel, len(tmp.Js.Data))
-	for _, v := range tmp.Js.Data {
+	channels := make(map[string]*Channel, len(payload.Data))
+	for _, v := range payload.Data {
 		var cmdID string
 		var cmdCHID string
 		if len(v.CMDs) > 0 {

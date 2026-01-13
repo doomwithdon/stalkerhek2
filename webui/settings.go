@@ -19,9 +19,9 @@ type RuntimeSettings struct {
 var (
 	settingsMu sync.RWMutex
 	runtimeSettings = RuntimeSettings{
-		PlaylistDelaySegments: 0,
-		ResponseHeaderTimeoutSeconds: 15,
-		MaxIdleConnsPerHost: 64,
+		PlaylistDelaySegments: 3,
+		ResponseHeaderTimeoutSeconds: 25,
+		MaxIdleConnsPerHost: 128,
 	}
 )
 

@@ -4,61 +4,70 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![GitHub Stars](https://img.shields.io/github/stars/kidpoleon/stalkerhek?style=social)](https://github.com/kidpoleon/stalkerhek)
 
-> **Turn Stalker IPTV portals into local streaming endpoints**
+Turn Stalker IPTV portal accounts into local streaming endpoints.
 
-## 📋 Table of Contents
-- [🔗 Upstream / Origins](#-upstream--origins)
-- [📝 General Description](#-general-description)
-- [🎥 Video Tutorial](#-video-tutorial)
-- [🚀 Installation](#-installation)
-  - [Direct Go Installation](#-direct-go-installation)
-  - [Docker Hub](#-docker-hub)
-  - [Docker Compose](#-docker-compose)
-- [📺 Usage Guide](#-usage-guide)
-  - [Accessing WebUI](#accessing-webui)
-  - [Adding Credentials](#adding-credentials)
-  - [Using HLS Playlists](#using-hls-playlists)
-- [❓ Troubleshooting & FAQ](#-troubleshooting--faq)
-- [🔌 Ports & Networking](#-ports--networking)
-- [🔄 Updating](#-updating)
-- [🙏 Credits & License](#-credits--license)
+You get:
+- Multiple profiles
+- Web UI for management
+- HLS playlist endpoint (works great in VLC / IPTV players)
+- Stalker-style proxy endpoint (for clients that expect STB-ish behavior)
+- Per-profile filtering (Categories -> Genres -> Channels)
 
-## 🔗 Upstream / Origins
-This project is based on and inspired by these repositories:
-- [erkexzcx/stalkerhek](https://github.com/erkexzcx/stalkerhek)
-- [CrazeeGhost/stalkerhek](https://github.com/CrazeeGhost/stalkerhek)
-- [rabilrbl/stalkerhek](https://github.com/rabilrbl/stalkerhek)
+## Table of contents
+- [What this is](#what-this-is)
+- [Quick start](#quick-start)
+- [Docker](#docker)
+- [Ports](#ports)
+- [Web UI usage](#web-ui-usage)
+- [Filters (per-profile)](#filters-per-profile)
+- [Advanced settings (stability)](#advanced-settings-stability)
+- [Persistence (where data is stored)](#persistence-where-data-is-stored)
+- [Troubleshooting](#troubleshooting)
+- [Security notes](#security-notes)
+- [Credits and license](#credits-and-license)
 
-## 📝 General Description
-`stalkerhek` is a lightweight Go application that transforms Stalker IPTV portal accounts into local streaming endpoints. It provides:
+## What this is
+`stalkerhek` is a single-binary Go application.
 
-- Multiple profile support
-- Web-based management interface
-- HLS playlists for media players
-- STB-style proxy for compatible clients
-- Persistent configuration
+It authenticates to a Stalker portal (typically `portal.php`) using your profile credentials (MAC address, and internally MAG-style device identifiers), fetches your channel list, then exposes:
+- An **HLS endpoint** your players can read
+- A **Proxy endpoint** that mimics STB interactions for clients that need it
 
-## 🎥 Video Tutorial
-[![Watch the tutorial](https://i.ibb.co/9kXc1pCk/Untitled-design.png)](https://youtu.be/KVAyiSZ6zSo)
+It also includes a Filters UI to safely enable/disable content per profile.
 
-## 🚀 Installation
+## Quick start
 
-### 🖥️ Direct Go Installation
+### 1) Run from source (Go 1.21+)
 ```bash
-# 1. Install Go 1.21+ from https://go.dev/dl/
-
-# 2. Clone and run
 git clone https://github.com/kidpoleon/stalkerhek
 cd stalkerhek
 go run cmd/stalkerhek/main.go
 ```
 
-### 🐳 Docker Hub
+Open:
+- Web UI: `http://localhost:4400/dashboard`
+
+### 2) Create a profile
+In the Web UI:
+- Click **Add Profile**
+- Fill in:
+  - **Portal URL**
+  - **MAC address**
+  - **HLS port** and **Proxy port** (must be unique per profile)
+- Click **Save Profile**
+
+The service will:
+- Validate the portal URL + MAC format
+- Authenticate
+- Fetch channels
+- Start HLS + Proxy for that profile
+
+## Docker
+
+### Docker run (host networking recommended)
 ```bash
-# Create data directory
 mkdir -p ~/stalkerhek/data
 
-# Run container
 docker run -d \
   --name stalkerhek \
   --network host \
@@ -67,8 +76,8 @@ docker run -d \
   kidpoleon/stalkerhek:main
 ```
 
-### 🐋 Docker Compose
-1. Create `docker-compose.yml`:
+### Docker compose
+Example `docker-compose.yml`:
 ```yaml
 version: '3.8'
 services:
@@ -82,77 +91,131 @@ services:
     volumes:
       - ./data:/data
 ```
-2. Start: `docker-compose up -d`
 
-## 📺 Usage Guide
-
-### Accessing WebUI
-- Local: `http://localhost:4400`
-- Remote: `http://<your-ip>:4400`
-
-### Adding Credentials
-1. Click "Add Profile"
-2. Fill in:
-   - **Portal URL**: `http://example.com/portal.php`
-   - **MAC Address**: `00:1A:79:12:34:56`
-   - **Ports**: Choose unique ports (e.g., 4600/4800)
-3. Click "Save Profile"
-
-### Using HLS Playlists
-1. Find your HLS URL in the dashboard
-2. Open in VLC or any IPTV player:
-   ```
-   http://<your-ip>:4600/
-   ```
-
-## ❓ Troubleshooting & FAQ
-
-### Common Issues
-
-#### WebUI Not Accessible
-- Check if service is running
-- Verify port 4400 is open
-- Try `http://localhost:4400` first
-
-#### Profile Won't Start
-- Ensure portal URL ends with `portal.php`
-- Verify MAC address format
-- Check for port conflicts
-
-### FAQ
-**Q: Can I run multiple profiles?**  
-A: Yes! Each profile runs in parallel with its own ports.
-
-**Q: How do I update?**  
+Start:
 ```bash
-docker pull kidpoleon/stalkerhek:main
-docker-compose down
 docker-compose up -d
 ```
 
-**Q: Where is my data stored?**  
-A: In the `./data` directory (Docker) or current directory (direct run).
-
-## 🔌 Ports & Networking
-- **WebUI**: 4400
-- **HLS Ports**: Configurable (e.g., 4600, 4601...)
-- **Proxy Ports**: Configurable (e.g., 4800, 4801...)
-
-## 🔄 Updating
-### Docker Compose
+Update:
 ```bash
 docker-compose pull
-docker-compose down
 docker-compose up -d
 ```
 
-### Direct Installation
-```bash
-cd /path/to/stalkerhek
-git pull
-go run cmd/stalkerhek/main.go
-```
+## Ports
 
-## 🙏 Credits & License
-- **Author**: [kidpoleon](https://github.com/kidpoleon)
-- **License**: MIT
+- **Web UI**: `4400`
+- **HLS**: per profile (example `4600`, `4601`, ...)
+- **Proxy**: per profile (example `4800`, `4801`, ...)
+
+If something does not start:
+- You likely have a **port conflict**
+- Or your firewall blocks the port
+
+## Web UI usage
+
+### Dashboard
+`/dashboard` is the main page.
+
+You can:
+- Create/edit/delete profiles
+- Start/Stop profiles
+- Copy HLS/Proxy URLs
+- Open logs (`/logs`) for troubleshooting
+
+### Logs
+Open `/logs` to see live logs.
+
+If a profile fails to start, logs usually show:
+- wrong portal URL
+- wrong MAC address
+- portal handshake/auth issues
+
+## Filters (per-profile)
+
+Filters are designed for speed and safety.
+
+Open from Dashboard:
+- Click **Filters** on a profile
+
+Flow:
+1. **Categories** (derived grouping from portal genre names)
+2. **Genres** (within a category)
+3. **Channels** (within a genre)
+
+You can:
+- Bulk select and enable/disable
+- Fine-tune individual channels
+
+Keyboard shortcuts in Channels:
+- Up/Down: move active row
+- Enter: open details
+- Space: toggle selection
+- Esc: clear selection
+
+Note: Filters UI is intentionally **desktop-focused**.
+
+## Advanced settings (stability)
+
+In the Dashboard "Advanced Settings":
+- **Playlist delay (segments)**: adds latency but often reduces buffering
+- **Upstream header timeout**: increase if the provider is slow
+- **Max idle conns/host**: helps with multiple concurrent streams
+
+If you experience buffering:
+- Increase Playlist delay first
+- Then increase Upstream header timeout
+
+## Persistence (where data is stored)
+
+Profiles and filters are persisted to JSON.
+
+- `STALKERHEK_PROFILES_FILE` controls where `profiles.json` is stored.
+- `filters.json` defaults to the **same directory** as `profiles.json` (e.g. `/data/filters.json` if profiles are `/data/profiles.json`).
+
+For Docker:
+- Mount a `/data` volume and set `STALKERHEK_PROFILES_FILE=/data/profiles.json`.
+
+## Troubleshooting
+
+### "Profile won't start"
+Check these first:
+- Portal URL must look like:
+  - `http(s)://HOST/portal.php`
+  - Some providers use `/stalker_portal/portal.php`
+- MAC address must look like:
+  - `00:1A:79:AA:BB:CC`
+- Ports must be free
+
+Open `/logs` and look for the first error.
+
+### Web UI not reachable
+- Confirm the process is running
+- Confirm port `4400` is open
+- Try `http://localhost:4400/dashboard`
+
+### Playlist works but channels buffer
+- Try increasing Playlist delay (segments)
+- Increase Upstream header timeout
+- If you have many devices, increase Max idle conns/host
+
+## Security notes
+
+- Do not expose this directly to the public internet.
+- Use a private LAN, VPN, or reverse proxy with authentication.
+- Profiles contain sensitive information (portal URL + MAC).
+
+See `SECURITY.md` for details.
+
+## Credits and license
+
+Origins/inspiration:
+- https://github.com/erkexzcx/stalkerhek
+- https://github.com/CrazeeGhost/stalkerhek
+- https://github.com/rabilrbl/stalkerhek
+
+Author:
+- https://github.com/kidpoleon
+
+License: MIT

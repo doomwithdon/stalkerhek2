@@ -1,11 +1,13 @@
 package stalker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 // Handshake reserves a offered token in Portal. If offered token is not available - new one will be issued by stalker portal, reservedMAG254 and Stalker's config will be updated.
@@ -88,7 +90,7 @@ func (p *Portal) authenticateWithDeviceIDs() (err error) {
 	// This HTTP request has different headers from the rest of HTTP requests, so perform it manually
 	type tmpStruct struct {
 		Js struct {
-			Id    string `json:"id"`
+			Id    any    `json:"id"`
 			Fname string `json:"fname"`
 		} `json:"js"`
 		Text string `json:"text"`
@@ -103,7 +105,9 @@ func (p *Portal) authenticateWithDeviceIDs() (err error) {
 		return err
 	}
 
-	if err = json.Unmarshal(content, &tmp); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(content))
+	dec.UseNumber()
+	if err = dec.Decode(&tmp); err != nil {
 		log.Println("Unexpected authentication response")
 		return err
 	}
@@ -111,7 +115,16 @@ func (p *Portal) authenticateWithDeviceIDs() (err error) {
 	log.Println("Logging in to Stalker says:")
 	log.Println(tmp.Text)
 
-	if tmp.Js.Id != "" {
+	id := ""
+	switch v := tmp.Js.Id.(type) {
+	case string:
+		id = v
+	case float64:
+		id = strconv.FormatInt(int64(v), 10)
+	case json.Number:
+		id = v.String()
+	}
+	if id != "" {
 		log.Println("Authenticated as " + tmp.Js.Fname)
 		return nil
 	}

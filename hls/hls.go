@@ -12,19 +12,20 @@ import (
 )
 
 type serverState struct {
+	profileID      int
 	playlist       map[string]*Channel
 	sortedChannels []string
 }
 
 // Start starts main routine.
-func Start(chs map[string]*stalker.Channel, bind string) {
-	StartWithContext(context.Background(), chs, bind)
+func Start(profileID int, chs map[string]*stalker.Channel, bind string) {
+	StartWithContext(context.Background(), profileID, chs, bind)
 }
 
 // StartWithContext starts main routine with graceful shutdown support.
-func StartWithContext(ctx context.Context, chs map[string]*stalker.Channel, bind string) {
+func StartWithContext(ctx context.Context, profileID int, chs map[string]*stalker.Channel, bind string) {
 	// Initialize playlist
-	s := &serverState{playlist: make(map[string]*Channel), sortedChannels: make([]string, 0, len(chs))}
+	s := &serverState{profileID: profileID, playlist: make(map[string]*Channel), sortedChannels: make([]string, 0, len(chs))}
 	for k, v := range chs {
 		s.playlist[k] = &Channel{
 			StalkerChannel: v,
