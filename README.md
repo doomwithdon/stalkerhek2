@@ -4,6 +4,39 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![GitHub Stars](https://img.shields.io/github/stars/kidpoleon/stalkerhek?style=social)](https://github.com/kidpoleon/stalkerhek)
 
+---
+
+## 🎬 Tutorial Video
+
+[![Stalkerhek Tutorial](https://img.youtube.com/vi/7AvkvlGfv64/0.jpg)](https://www.youtube.com/watch?v=7AvkvlGfv64)
+
+*Click the image above to watch the tutorial video and get started with stalkerhek*
+
+## 📸 Screenshots
+
+<div align="center">
+<table>
+<tr>
+<td align="center"><strong>Create Profile</strong></td>
+<td align="center"><strong>Filter Management</strong></td>
+</tr>
+<tr>
+<td><img src="https://i.ibb.co/67YdPgTz/create-page.png" alt="create page" width="100%"></td>
+<td><img src="https://i.ibb.co/zTcQLk91/filter-page.png" alt="filter page" width="100%"></td>
+</tr>
+<tr>
+<td align="center"><strong>Profile Management</strong></td>
+<td align="center"><strong>Tuning Settings</strong></td>
+</tr>
+<tr>
+<td><img src="https://i.ibb.co/zVNTtg2W/manage-page.png" alt="manage page" width="100%"></td>
+<td><img src="https://i.ibb.co/8DVWCFJg/tuning-page.png" alt="tuning page" width="100%"></td>
+</tr>
+</table>
+</div>
+
+---
+
 Turn Stalker IPTV portal accounts into local streaming endpoints.
 
 You get:
