@@ -6,13 +6,13 @@
 
 ---
 
-## 🎬 Tutorial Video
+## Tutorial Video
 
-[![Stalkerhek Tutorial](https://img.youtube.com/vi/7AvkvlGfv64/0.jpg)](https://www.youtube.com/watch?v=7AvkvlGfv64)
+[![Stalkerhek Tutorial](https://i.ibb.co/b53gtx6G/STALKERHEK-BANNER-3840x2160.png)](https://www.youtube.com/watch?v=7AvkvlGfv64)
 
 *Click the image above to watch the tutorial video and get started with stalkerhek*
 
-## 📸 Screenshots
+## Screenshots
 
 <div align="center">
 <table>
