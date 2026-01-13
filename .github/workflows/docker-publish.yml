@@ -55,8 +55,10 @@ jobs:
       - name: Preflight: ensure Docker Hub secrets are configured
         if: github.event_name != 'pull_request'
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          # Support both GitHub Secrets and Variables.
+          # Secrets are preferred; Variables are a fallback.
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME || vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN || vars.DOCKERHUB_TOKEN }}
         run: |
           if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
             echo "Missing Docker Hub secrets. Configure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN in repo settings." >&2
@@ -70,8 +72,8 @@ jobs:
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN || vars.DOCKERHUB_TOKEN }}
 
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
@@ -80,6 +82,18 @@ jobs:
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Ensure a stable tag exists for default branch builds.
+          # This guarantees docker.io/<user>/<repo>:main updates on every main push.
+          tags: |
+            type=raw,value=main,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha
+
+      - name: Debug: show computed image tags
+        run: |
+          echo "Computed tags:" 
+          echo "${{ steps.meta.outputs.tags }}"
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
