@@ -106,12 +106,17 @@ func StartWithContext(ctx context.Context, cfg *stalker.Config, ready chan struc
     // mount health/metrics/info endpoints
     RegisterHealthHandlers(mux)
 
+    // mount auth (login/logout)
+    RegisterAuthHandlers(mux)
+
     // middleware to count requests/errors
     var handler http.Handler = mux
     handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         IncrementRequests()
         mux.ServeHTTP(w, r)
     })
+    // enforce admin auth if configured
+    handler = authMiddleware(handler)
     if os.Getenv("STALKERHEK_WEBUI_GZIP") == "1" {
         handler = gzipMiddleware(handler)
     }

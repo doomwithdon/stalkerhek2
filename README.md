@@ -205,6 +205,24 @@ Profiles and filters are persisted to JSON.
 For Docker:
 - Mount a `/data` volume and set `STALKERHEK_PROFILES_FILE=/data/profiles.json`.
 
+## Admin login (optional)
+
+You can require a login to access the Web UI. Set these environment variables:
+
+- `STALKERHEK_ADMIN_PASSWORD`: when set (non-empty), the login page is enabled.
+- `STALKERHEK_ADMIN_USER` (optional): defaults to `admin`.
+
+Endpoints always public (even with auth enabled): `/login`, `/health`, `/metrics`, `/status`, `/info`.
+All other Web UI and API routes (e.g. `/dashboard`, `/profiles*`, `/api/*`, `/filters`, `/logs`) require login.
+
+Example (Docker):
+```yaml
+environment:
+  - STALKERHEK_PROFILES_FILE=/data/profiles.json
+  - STALKERHEK_ADMIN_PASSWORD=change-me
+  # - STALKERHEK_ADMIN_USER=admin
+```
+
 ## Troubleshooting
 
 ### "Profile won't start"

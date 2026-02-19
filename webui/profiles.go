@@ -642,7 +642,8 @@ func RegisterProfileHandlers(mux *http.ServeMux, onStart func()) {
 			Host     string
 			Settings RuntimeSettings
 			Profiles []Profile
-		}{Host: host, Settings: GetRuntimeSettings(), Profiles: ListProfiles()}
+			Auth    bool
+		}{Host: host, Settings: GetRuntimeSettings(), Profiles: ListProfiles(), Auth: authEnabled()}
 
 		const tpl = `<!doctype html>
 <html>
@@ -1237,6 +1238,11 @@ func RegisterProfileHandlers(mux *http.ServeMux, onStart func()) {
       <a class="pill pilllink" href="https://github.com/kidpoleon/stalkerhek" target="_blank" rel="noopener" title="View source and report issues">
         <i class="fa-brands fa-github"></i> GitHub
       </a>
+			{{if .Auth}}
+			<a class="pill pilllink" href="/logout" title="Sign out of admin session">
+				<i class="fa-solid fa-right-from-bracket"></i> Logout
+			</a>
+			{{end}}
     </div>
   </div>
 </body>
